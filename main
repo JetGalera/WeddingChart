@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wedding Seating Chart</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+      margin: 0;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      font-size: 2em;
+    }
+    .input-area {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 10px;
+      font-size: 1em;
+      margin: 5px;
+      border-radius: 5px;
+      border: 1px solid #ddd;
+      width: 150px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    .table {
+      margin: 20px auto;
+      display: flex;
+      flex-wrap: wrap;
+      width: 80%;
+      justify-content: center;
+      gap: 10px;
+    }
+    .seat {
+      width: 70px;
+      height: 70px;
+      background-color: #d4edda;
+      border: 2px solid #28a745;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      font-size: 0.9em;
+      color: #333;
+    }
+    .seat:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .seat.occupied {
+      background-color: #f8d7da;
+      border-color: #dc3545;
+      cursor: not-allowed;
+    }
+    .seat.occupied:hover {
+      transform: scale(1);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      width: 250px;
+      text-align: center;
+    }
+    .modal input {
+      padding: 8px;
+      font-size: 1em;
+      width: 80%;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    .modal button {
+      padding: 8px 15px;
+      font-size: 1em;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+      transition: 0.3s;
+    }
+    .modal button:hover {
+      background-color: #2980b9;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Wedding Seating Chart</h1>
+
+  <!-- User Input for Tables and Seats -->
+  <div class="input-area">
+    <label for="numTables">Enter the number of tables: </label>
+    <input type="number" id="numTables" placeholder="Number of tables" />
+    <label for="seatsPerTable">Enter the number of seats per table: </label>
+    <input type="number" id="seatsPerTable" placeholder="Seats per table" />
+    <button onclick="generateSeatingChart()">Generate Seating Chart</button>
+  </div>
+
+  <div id="tables"></div>
+
+  <div class="overlay" id="overlay"></div>
+  <div class="modal" id="modal">
+    <h3>Edit Reservation</h3>
+    <input type="text" id="nameInput" placeholder="Enter name" />
+    <br />
+    <button id="saveBtn">Save</button>
+    <button id="removeBtn">Remove</button>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
+
+  <script>
+    let NUM_TABLES = 0;
+    let SEATS_PER_TABLE = 0;
+    const seatingData = JSON.parse(localStorage.getItem('seatingData')) || {};
+
+    const tablesContainer = document.getElementById('tables');
+    const nameInput = document.getElementById('nameInput');
+    const saveBtn = document.getElementById('saveBtn');
+    const removeBtn = document.getElementById('removeBtn');
+    const overlay = document.getElementById('overlay');
+    const modal = document.getElementById('modal');
+
+    let currentSeatId = null;
+
+    function generateSeatingChart() {
+      NUM_TABLES = parseInt(document.getElementById('numTables').value) || 5;
+      SEATS_PER_TABLE = parseInt(document.getElementById('seatsPerTable').value) || 8;
+
+      if (NUM_TABLES < 1 || SEATS_PER_TABLE < 1) {
+        alert('Please enter valid numbers for tables and seats.');
+        return;
+      }
+
+      renderTables(); // Generate the seating chart based on user input
+    }
+
+    function renderTables() {
+      tablesContainer.innerHTML = '';
+      for (let t = 1; t <= NUM_TABLES; t++) {
+        const tableDiv = document.createElement('div');
+        tableDiv.className = 'table';
+
+        const heading = document.createElement('h2');
+        heading.textContent = `Table ${t}`;
+        heading.style.textAlign = 'center';
+        tablesContainer.appendChild(heading);
+
+        for (let s = 1; s <= SEATS_PER_TABLE; s++) {
+          const seatId = `T${t}-S${s}`;
+          const seat = document.createElement('div');
+          seat.className = 'seat';
+          seat.textContent = seatingData[seatId] || seatId;
+
+          if (seatingData[seatId]) {
+            seat.classList.add('occupied');
+            seat.addEventListener('click', () => handleSeatClick(seatId, seat));
+          } else {
+            seat.addEventListener('click', () => handleSeatClick(seatId, seat));
+          }
+
+          tableDiv.appendChild(seat);
+        }
+
+        tablesContainer.appendChild(tableDiv);
+      }
+    }
+
+    function handleSeatClick(seatId, seatElement) {
+      currentSeatId = seatId;
+
+      if (seatingData[seatId]) {
+        // It's occupied
+        nameInput.value = seatingData[seatId];
+        removeBtn.style.display = 'inline-block';
+      } else {
+        // It's empty
+        nameInput.value = '';
+        removeBtn.style.display = 'none';
+      }
+
+      showModal();
+    }
+
+    saveBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      if (name === '') return;
+
+      seatingData[currentSeatId] = name;
+      localStorage.setItem('seatingData', JSON.stringify(seatingData));
+      renderTables(); // Re-render the tables to update UI
+      closeModal();
+    });
+
+    removeBtn.addEventListener('click', () => {
+      delete seatingData[currentSeatId];
+      localStorage.setItem('seatingData', JSON.stringify(seatingData));
+      renderTables(); // Re-render the tables to update UI
+      closeModal();
+    });
+
+    function showModal() {
+      modal.style.display = 'block';
+      overlay.style.display = 'block';
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      overlay.style.display = 'none';
+    }
+
+  </script>
+
+</body>
+</html>
